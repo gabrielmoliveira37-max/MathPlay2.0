@@ -1,26 +1,34 @@
 const app = document.querySelector('#app');
 const storageKey = 'mathplay-user';
 const games = [
-  { id: 'inteiros', icon: '±', title: 'Expedicao dos Inteiros', description: 'Some e subtraia numeros positivos e negativos.', color: 'mint', questions: [
-    { q: 'Qual e o resultado de -8 + 13?', options: ['-21', '5', '21', '-5'], answer: '5', hint: 'Comece no -8 e avance 13 casas para a direita.' },
-    { q: 'Uma nave esta a -4 km. Ela sobe 9 km. Onde chega?', options: ['-13 km', '13 km', '5 km', '-5 km'], answer: '5 km', hint: 'Subir significa somar: -4 + 9.' },
-    { q: 'Quanto e 7 - (-6)?', options: ['1', '-13', '13', '-1'], answer: '13', hint: 'Subtrair um numero negativo equivale a somar seu oposto.' }
-  ] },
-  { id: 'fracoes', icon: '⅔', title: 'Cozinha das Fracoes', description: 'Combine ingredientes e descubra equivalencias.', color: 'coral', questions: [
-    { q: 'Qual fracao e equivalente a 1/2?', options: ['2/4', '1/3', '3/5', '4/6'], answer: '2/4', hint: 'Multiplique numerador e denominador pelo mesmo numero.' },
-    { q: 'Quanto e 1/4 + 2/4?', options: ['3/8', '2/4', '3/4', '1/2'], answer: '3/4', hint: 'Com denominadores iguais, some apenas os numeradores.' },
-    { q: 'Qual e maior?', options: ['2/5', '3/5', 'Sao iguais', 'Nao e possivel'], answer: '3/5', hint: 'Compare os numeradores quando o denominador e igual.' }
-  ] },
-  { id: 'equacoes', icon: 'x', title: 'Cofre do Equilibrio', description: 'Destrave cada cofre encontrando o valor de x.', color: 'yellow', questions: [
-    { q: 'x + 7 = 15. Qual e o valor de x?', options: ['7', '8', '9', '22'], answer: '8', hint: 'Faca a operacao inversa: 15 - 7.' },
-    { q: '3x = 21. Qual e o valor de x?', options: ['6', '7', '18', '24'], answer: '7', hint: 'Divida os dois lados da igualdade por 3.' },
-    { q: '2x + 4 = 14. Quanto vale x?', options: ['4', '5', '6', '9'], answer: '5', hint: 'Primeiro retire 4. Depois divida o resultado por 2.' }
-  ] },
-  { id: 'porcentagem', icon: '%', title: 'Mercado em Acao', description: 'Calcule descontos, trocos e lucros na loja.', color: 'blue', questions: [
-    { q: 'Quanto e 10% de 80?', options: ['0,8', '8', '10', '18'], answer: '8', hint: '10% e a mesma coisa que dividir por 10.' },
-    { q: 'Uma mochila custa R$ 100 e tem 20% de desconto. Preco final?', options: ['R$ 20', 'R$ 80', 'R$  -20', 'R$ 120'], answer: 'R$ 80', hint: 'Desconto de 20% significa pagar os 80% restantes.' },
-    { q: 'Voce compra por R$ 30 e vende por R$ 45. Qual foi o lucro?', options: ['R$ 10', 'R$ 15', 'R$ 75', 'R$ 5'], answer: 'R$ 15', hint: 'Lucro = preco de venda menos preco de custo.' }
-  ] }
+  {
+    id: 'inteiros', icon: '±', title: 'Expedição dos Inteiros', description: 'Some e subtraia números positivos e negativos.', color: 'mint', questions: [
+      { q: 'Qual é o resultado de -8 + 13?', options: ['-21', '5', '21', '-5'], answer: '5', hint: 'Comece no -8 e avance 13 casas para a direita.' },
+      { q: 'Uma nave está a -4 km. Ela sobe 9 km. Onde chega?', options: ['-13 km', '13 km', '5 km', '-5 km'], answer: '5 km', hint: 'Subir significa somar: -4 + 9.' },
+      { q: 'Quanto é 7 - (-6)?', options: ['1', '-13', '13', '-1'], answer: '13', hint: 'Subtrair um número negativo equivale a somar seu oposto.' }
+    ]
+  },
+  {
+    id: 'fracoes', icon: '⅔', title: 'Cozinha das Frações', description: 'Combine ingredientes e descubra equivalências.', color: 'coral', questions: [
+      { q: 'Qual fração é equivalente a 1/2?', options: ['2/4', '1/3', '3/5', '4/6'], answer: '2/4', hint: 'Multiplique numerador e denominador pelo mesmo número.' },
+      { q: 'Quanto é 1/4 + 2/4?', options: ['3/8', '2/4', '3/4', '1/2'], answer: '3/4', hint: 'Com denominadores iguais, some apenas os numeradores.' },
+      { q: 'Qual é maior?', options: ['2/5', '3/5', 'São iguais', 'Não é possível'], answer: '3/5', hint: 'Compare os numeradores quando o denominador é igual.' }
+    ]
+  },
+  {
+    id: 'equacoes', icon: 'x', title: 'Cofre do Equilíbrio', description: 'Destrave cada cofre encontrando o valor de x.', color: 'yellow', questions: [
+      { q: 'x + 7 = 15. Qual é o valor de x?', options: ['7', '8', '9', '22'], answer: '8', hint: 'Faça a operação inversa: 15 - 7.' },
+      { q: '3x = 21. Qual e o valor de x?', options: ['6', '7', '18', '24'], answer: '7', hint: 'Divida os dois lados da igualdade por 3.' },
+      { q: '2x + 4 = 14. Quanto vale x?', options: ['4', '5', '6', '9'], answer: '5', hint: 'Primeiro retire 4. Depois divida o resultado por 2.' }
+    ]
+  },
+  {
+    id: 'porcentagem', icon: '%', title: 'Mercado em Ação', description: 'Calcule descontos, trocos e lucros na loja.', color: 'blue', questions: [
+      { q: 'Quanto é 10% de 80?', options: ['0,8', '8', '10', '18'], answer: '8', hint: '10% é a mesma coisa que dividir por 10.' },
+      { q: 'Uma mochila custa R$ 100 e tem 20% de desconto. Preço final?', options: ['R$ 20', 'R$ 80', 'R$ -20', 'R$ 120'], answer: 'R$ 80', hint: 'Desconto de 20% significa pagar os 80% restantes.' },
+      { q: 'Você compra por R$ 30 e vende por R$ 45. Qual foi o lucro?', options: ['R$ 10', 'R$ 15', 'R$ 75', 'R$ 5'], answer: 'R$ 15', hint: 'Lucro = preço de venda menos preço de custo.' }
+    ]
+  }
 ];
 
 const extraQuestions = {
@@ -108,8 +116,9 @@ games.forEach(game => {
 
 let user = JSON.parse(localStorage.getItem(storageKey) || 'null');
 let currentGame = null;
-let gameState = { index: 0, score: 0, answered: false, hint: false, level: 'Facil' };
+let gameState = { index: 0, score: 0, answered: false, hint: false, level: 'Facil', results: [] };
 function currentQuestions() { return currentGame.questions[gameState.level]; }
+function activeDays(played) { return new Set(played.map(item => item.date)).size; }
 
 function saveUser() { localStorage.setItem(storageKey, JSON.stringify(user)); }
 function initials(name) { return name.split(' ').map(word => word[0]).slice(0, 2).join('').toUpperCase(); }
@@ -117,11 +126,11 @@ function render() { user ? renderDashboard() : renderAuth(); }
 
 function renderAuth(register = false) {
   app.innerHTML = `<div class="auth-view">
-    <section class="auth-art"><div class="brand"><span class="brand-mark">+</span> mathplay</div><div class="art-copy"><div class="eyebrow">Missao: aprender brincando</div><h1>Matematica que ganha vida.</h1><p>Uma trilha de desafios para transformar cada acerto em uma nova descoberta.</p></div></section>
+    <section class="auth-art"><div class="brand"><span class="brand-mark">+</span> mathplay</div><div class="art-copy"><div class="eyebrow">Missão: aprender brincando</div><h1>Matemática que ganha vida.</h1><p>Uma trilha de desafios para transformar cada acerto em uma nova descoberta.</p></div></section>
     <section class="auth-panel"><form class="auth-card" id="auth-form"><div class="eyebrow">Portal do aluno</div><h2>${register ? 'Crie seu perfil' : 'Boas-vindas de volta'}</h2><p>${register ? 'Monte sua jornada e comece a jogar.' : 'Entre para continuar sua trilha de aprendizagem.'}</p>
       ${register ? '<div class="field"><label for="name">Como podemos te chamar?</label><input id="name" required placeholder="Seu nome"></div>' : ''}
-      <div class="field"><label for="email">E-mail</label><input id="email" type="email" required placeholder="voce@email.com"></div>
-      <div class="field"><label for="password">Senha</label><input id="password" type="password" minlength="4" required placeholder="Minimo de 4 caracteres"></div>
+      <div class="field"><label for="email">E-mail</label><input id="email" type="email" required placeholder="você@email.com"></div>
+      <div class="field"><label for="password">Senha</label><input id="password" type="password" minlength="4" required placeholder="Mínimo de 4 caracteres"></div>
       <div class="error" id="auth-error"></div><button class="primary-btn auth-submit">${register ? 'Criar minha conta' : 'Entrar na MathPlay'} <span aria-hidden="true">→</span></button>
       <p class="auth-switch">${register ? 'Ja tem uma conta?' : 'Ainda nao tem uma conta?'} <button class="text-btn" type="button" id="toggle-auth">${register ? 'Fazer login' : 'Criar agora'}</button></p>
     </form></section></div>`;
@@ -146,12 +155,13 @@ function handleAuth(event) {
 function renderDashboard() {
   const total = user.totalScore || 0;
   const played = user.played || [];
+  const journeyDays = activeDays(played);
   const accuracy = played.length ? Math.round(played.reduce((sum, item) => sum + item.accuracy, 0) / played.length) : 0;
   app.innerHTML = `<div class="dashboard"><header class="topbar"><div class="brand"><span class="brand-mark">+</span> mathplay</div><div class="topbar-actions"><span class="user-name">${user.name}</span><span class="avatar">${initials(user.name)}</span><button class="ghost-btn" id="logout">Sair</button></div></header><main>
-    <section class="hero"><div><div class="eyebrow">Sua central de descobertas</div><h1>Ola, ${user.name.split(' ')[0]}.</h1><p>Escolha um desafio e avance um passo na sua trilha.</p></div><div class="streak"><strong>${played.length ? played.length : 0} dias</strong><span>de jornada ativa</span></div></section>
-    <section class="stats"><div class="stat"><b>${total}</b><small>pontos acumulados</small></div><div class="stat"><b>${played.length}</b><small>desafios concluidos</small></div><div class="stat"><b>${accuracy}%</b><small>taxa de acerto</small></div></section>
+    <section class="hero"><div><div class="eyebrow">Sua central de descobertas</div><h1>Olá, ${user.name.split(' ')[0]}.</h1><p>Escolha um desafio e avance um passo na sua trilha.</p></div><div class="streak"><strong>${journeyDays} ${journeyDays === 1 ? 'dia' : 'dias'}</strong><span>de jornada ativa</span></div></section>
+    <section class="stats"><div class="stat"><b>${total}</b><small>pontos acumulados</small></div><div class="stat"><b>${played.length}</b><small>desafios concluídos</small></div><div class="stat"><b>${accuracy}%</b><small>taxa de acerto</small></div></section>
     <div class="section-head"><h2>Trilha de aprendizagem</h2><span>4 mundos para explorar</span></div><section class="games">${games.map(game => gameCard(game, played)).join('')}</section>
-    <section class="activity"><div class="panel"><div class="section-head"><h3>Medalhas</h3><span>${user.badges?.length || 0}/4</span></div><div class="badges">${badge('Primeiro passo', '★', (user.badges || []).includes('first'))}${badge('Mente afiada', '✦', (user.badges || []).includes('sharp'))}${badge('Explorador', '◆', (user.badges || []).includes('explorer'))}${badge('Mestre MathPlay', '♛', (user.badges || []).includes('master'))}</div></div><div class="panel"><div class="section-head"><h3>Atividade recente</h3><span>${played.length ? 'ultimos jogos' : 'ainda vazio'}</span></div>${played.length ? played.slice(-3).reverse().map(item => `<div class="history-row"><span>${item.title}<br><small>${item.date}</small></span><span class="score">+${item.score} pts</span></div>`).join('') : '<p style="color:var(--muted);font-size:13px">Seu historico aparece aqui depois da primeira partida.</p>'}</div></section>
+    <section class="activity"><div class="panel"><div class="section-head"><h3>Medalhas</h3><span>${user.badges?.length || 0}/4</span></div><div class="badges">${badge('Primeiro passo', '★', (user.badges || []).includes('first'))}${badge('Mente afiada', '✦', (user.badges || []).includes('sharp'))}${badge('Explorador', '◆', (user.badges || []).includes('explorer'))}${badge('Mestre MathPlay', '♛', (user.badges || []).includes('master'))}</div></div><div class="panel"><div class="section-head"><h3>Atividade recente</h3><span>${played.length ? 'últimos jogos' : 'ainda vazio'}</span></div>${played.length ? played.slice(-3).reverse().map(item => `<div class="history-row"><span>${item.title}<br><small>${item.date}</small></span><span class="score">+${item.score} pts</span></div>`).join('') : '<p style="color:var(--muted);font-size:13px">Seu histórico aparece aqui depois da primeira partida.</p>'}</div></section>
   </main></div>`;
   document.querySelector('#logout').addEventListener('click', () => { user = null; render(); });
   document.querySelectorAll('[data-game]').forEach(button => button.addEventListener('click', () => openGame(button.dataset.game)));
@@ -159,9 +169,10 @@ function renderDashboard() {
 function badge(label, symbol, unlocked) { return `<div class="badge ${unlocked ? '' : 'locked'}"><span>${symbol}</span>${label}</div>`; }
 function gameCard(game, played) { const result = played.filter(item => item.id === game.id).at(-1); const progress = result ? Math.min(100, result.accuracy + 20) : 0; return `<article class="game-card"><div><div class="game-icon">${game.icon}</div><h3>${game.title}</h3><p>${game.description}</p></div><div><div class="progress-wrap"><div class="progress-line"><i style="width:${progress}%"></i></div></div><button class="game-link" data-game="${game.id}">Jogar agora <span>↗</span></button></div></article>`; }
 
-function openGame(id) { currentGame = games.find(game => game.id === id); gameState = { index: 0, score: 0, answered: false, hint: false, level: 'Facil' }; renderGameModal(); }
-function renderGameModal() { const questions = currentQuestions(); const question = questions[gameState.index]; document.querySelector('#game-modal')?.remove(); app.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="game-modal"><section class="game-modal"><div class="modal-top"><div><div class="eyebrow">Desafio ${gameState.index + 1} de ${questions.length}</div><h2>${currentGame.title}</h2></div><button class="close-btn" id="close-game" aria-label="Fechar">×</button></div><p class="intro">Resolva a questao para liberar a proxima etapa.</p><div class="level-tabs">${['Facil', 'Medio', 'Dificil'].map(level => `<button class="${gameState.level === level ? 'active' : ''}" data-level="${level}">${level}</button>`).join('')}</div><div class="question-box"><p class="question">${question.q}</p><div class="answer-grid">${question.options.map(option => `<button class="answer-btn" data-answer="${option}">${option}</button>`).join('')}</div></div><div class="hint" id="hint">${gameState.hint ? 'Dica: ' + question.hint : 'A dica progressiva esta disponivel quando precisar.'}</div><div class="modal-footer"><span class="game-meta">${gameState.score} pontos nesta partida</span><button class="ghost-btn" id="hint-btn">${gameState.hint ? 'Dica exibida' : 'Pedir dica'}</button></div></section></div>`); document.querySelector('#close-game').addEventListener('click', closeGame); document.querySelector('#hint-btn').addEventListener('click', () => { gameState.hint = true; renderGameModal(); }); document.querySelectorAll('[data-level]').forEach(button => button.addEventListener('click', () => { gameState.level = button.dataset.level; gameState.index = 0; gameState.answered = false; gameState.hint = false; renderGameModal(); })); document.querySelectorAll('[data-answer]').forEach(button => button.addEventListener('click', () => answer(button, question))); }
-function answer(button, question) { if (gameState.answered) return; gameState.answered = true; const questions = currentQuestions(); const correct = button.dataset.answer === question.answer; button.classList.add(correct ? 'correct' : 'wrong'); document.querySelectorAll('[data-answer]').forEach(option => { if (option.dataset.answer === question.answer) option.classList.add('correct'); }); gameState.score += correct ? (gameState.level === 'Dificil' ? 150 : gameState.level === 'Medio' ? 125 : 100) : 0; const footer = document.querySelector('.modal-footer'); footer.innerHTML = `<span class="game-meta">${correct ? 'Muito bem! + pontos' : 'Quase! A resposta correta esta destacada.'}</span><button class="primary-btn" id="next-question">${gameState.index === questions.length - 1 ? 'Ver resultado' : 'Continuar'} →</button>`; document.querySelector('#next-question').addEventListener('click', () => { if (gameState.index === questions.length - 1) finishGame(); else { gameState.index++; gameState.answered = false; gameState.hint = false; renderGameModal(); } }); }
-function finishGame() { const questions = currentQuestions(); const correctCount = Math.round(gameState.score / (gameState.level === 'Dificil' ? 150 : gameState.level === 'Medio' ? 125 : 100)); const accuracy = Math.round((correctCount / questions.length) * 100); user.totalScore = (user.totalScore || 0) + gameState.score; user.played = [...(user.played || []), { id: currentGame.id, title: currentGame.title, score: gameState.score, accuracy, date: new Date().toLocaleDateString('pt-BR') }]; user.badges = [...new Set([...(user.badges || []), ...(user.played.length === 1 ? ['first'] : []), ...(accuracy === 100 ? ['sharp'] : []), ...(new Set(user.played.map(item => item.id)).size === 4 ? ['explorer'] : []), ...(user.totalScore >= 1000 ? ['master'] : [])])]; saveUser(); closeGame(); renderDashboard(); }
+function openGame(id) { currentGame = games.find(game => game.id === id); gameState = { index: 0, score: 0, answered: false, hint: false, level: 'Facil', results: [] }; renderGameModal(); }
+function renderGameModal() { const questions = currentQuestions(); const question = questions[gameState.index]; const levelLabels = { Facil: 'Fácil', Medio: 'Médio', Dificil: 'Difícil' }; document.querySelector('#game-modal')?.remove(); app.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="game-modal"><section class="game-modal"><div class="modal-top"><div><div class="eyebrow">Desafio ${gameState.index + 1} de ${questions.length}</div><h2>${currentGame.title}</h2></div><button class="close-btn" id="close-game" aria-label="Fechar">×</button></div><p class="intro">Resolva a questão para liberar a próxima etapa.</p><div class="level-tabs">${['Facil', 'Medio', 'Dificil'].map(level => `<button class="${gameState.level === level ? 'active' : ''}" data-level="${level}">${levelLabels[level]}</button>`).join('')}</div><div class="question-box"><p class="question">${question.q}</p><div class="answer-grid">${question.options.map(option => `<button class="answer-btn" data-answer="${option}">${option}</button>`).join('')}</div></div><div class="hint" id="hint">${gameState.hint ? 'Dica: ' + question.hint : 'A dica progressiva está disponível quando precisar.'}</div><div class="modal-footer"><span class="game-meta">${gameState.score} pontos nesta partida</span><button class="ghost-btn" id="hint-btn">${gameState.hint ? 'Dica exibida' : 'Pedir dica'}</button></div></section></div>`); document.querySelector('#close-game').addEventListener('click', closeGame); document.querySelector('#hint-btn').addEventListener('click', () => { gameState.hint = true; renderGameModal(); }); document.querySelectorAll('[data-level]').forEach(button => button.addEventListener('click', () => { gameState.level = button.dataset.level; gameState.index = 0; gameState.answered = false; gameState.hint = false; renderGameModal(); })); document.querySelectorAll('[data-answer]').forEach(button => button.addEventListener('click', () => answer(button, question))); }
+function answer(button, question) { if (gameState.answered) return; gameState.answered = true; const questions = currentQuestions(); const correct = button.dataset.answer === question.answer; gameState.results.push({ question: question.q, answer: button.dataset.answer, correctAnswer: question.answer, correct }); button.classList.add(correct ? 'correct' : 'wrong'); document.querySelectorAll('[data-answer]').forEach(option => { if (option.dataset.answer === question.answer) option.classList.add('correct'); }); gameState.score += correct ? (gameState.level === 'Dificil' ? 150 : gameState.level === 'Medio' ? 125 : 100) : 0; const footer = document.querySelector('.modal-footer'); footer.innerHTML = `<span class="game-meta">${correct ? 'Muito bem! + pontos' : 'Quase! A resposta correta está destacada.'}</span><button class="primary-btn" id="next-question">${gameState.index === questions.length - 1 ? 'Ver resultado' : 'Continuar'} →</button>`; document.querySelector('#next-question').addEventListener('click', () => { if (gameState.index === questions.length - 1) finishGame(); else { gameState.index++; gameState.answered = false; gameState.hint = false; renderGameModal(); } }); }
+function finishGame() { const questions = currentQuestions(); const correctCount = gameState.results.filter(result => result.correct).length; const accuracy = Math.round((correctCount / questions.length) * 100); user.totalScore = (user.totalScore || 0) + gameState.score; user.played = [...(user.played || []), { id: currentGame.id, title: currentGame.title, score: gameState.score, accuracy, date: new Date().toLocaleDateString('pt-BR') }]; user.badges = [...new Set([...(user.badges || []), ...(user.played.length === 1 ? ['first'] : []), ...(accuracy === 100 ? ['sharp'] : []), ...(new Set(user.played.map(item => item.id)).size === 4 ? ['explorer'] : []), ...(user.totalScore >= 1000 ? ['master'] : [])])]; saveUser(); renderResults(correctCount, accuracy); }
+function renderResults(correctCount, accuracy) { const rows = gameState.results.map((result, index) => `<div class="result-row"><span class="result-status ${result.correct ? 'is-correct' : 'is-wrong'}">${result.correct ? '✓' : '×'}</span><div><strong>${index + 1}. ${result.question}</strong><small>Sua resposta: ${result.answer}${result.correct ? '' : ` · Correta: ${result.correctAnswer}`}</small></div></div>`).join(''); document.querySelector('#game-modal')?.remove(); app.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="game-modal"><section class="game-modal results-modal"><div class="modal-top"><div><div class="eyebrow">Resultado da partida</div><h2>${currentGame.title}</h2></div><button class="close-btn" id="close-game" aria-label="Fechar">×</button></div><div class="result-summary"><strong>${correctCount}/${gameState.results.length}</strong><span>${accuracy}% de acerto · ${gameState.score} pontos</span></div><div class="results-list">${rows}</div><button class="primary-btn result-done" id="result-done">Voltar para a trilha</button></section></div>`); document.querySelector('#close-game').addEventListener('click', () => { closeGame(); renderDashboard(); }); document.querySelector('#result-done').addEventListener('click', () => { closeGame(); renderDashboard(); }); }
 function closeGame() { document.querySelector('#game-modal')?.remove(); }
 render();
