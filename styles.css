@@ -12,6 +12,21 @@
   --shadow: 0 16px 40px rgba(16, 36, 62, .09);
 }
 
+[data-theme="dark"] {
+  --ink: #edf3f4;
+  --muted: #aab8c0;
+  --paper: #121212;
+  --white: #000000;
+  --line: #343434;
+  --navy: #000000;
+  --shadow: 0 16px 40px rgba(0, 0, 0, .22);
+  color-scheme: dark;
+}
+
+[data-theme="dark"] .auth-art {
+  background: #000000;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -21,6 +36,7 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: "DM Sans", sans-serif;
+  transition: background-color .2s, color .2s;
 }
 
 button,
@@ -73,6 +89,10 @@ button {
   transform: rotate(18deg);
   border-radius: 42px;
   opacity: .95;
+}
+
+.auth-art .eyebrow {
+  color: #ffffff;
 }
 
 .brand {
@@ -168,7 +188,7 @@ button {
   border: 1px solid var(--line);
   border-radius: 10px;
   outline: none;
-  background: white;
+  background: var(--white);
   color: var(--ink);
 }
 
@@ -256,6 +276,29 @@ button {
   display: flex;
   align-items: center;
   gap: 14px;
+}
+
+.dashboard .topbar-actions {
+  padding-right: 150px;
+}
+
+.theme-toggle {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  z-index: 10;
+  min-height: 38px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  color: var(--ink);
+  background: var(--white);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.theme-toggle:hover {
+  border-color: var(--coral);
 }
 
 .avatar {
@@ -774,6 +817,10 @@ main {
 
   .topbar {
     padding: 14px 20px;
+  }
+
+  .dashboard .topbar-actions {
+    padding-right: 145px;
   }
 
   .user-name {

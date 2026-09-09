@@ -1,5 +1,6 @@
 const app = document.querySelector('#app');
 const storageKey = 'mathplay-user';
+const themeKey = 'mathplay-theme';
 const games = [
   {
     id: 'inteiros', icon: '±', title: 'Expedição dos Inteiros', description: 'Some e subtraia números positivos e negativos.', color: 'mint', questions: [
@@ -114,19 +115,48 @@ games.forEach(game => {
   };
 });
 
-let user = JSON.parse(localStorage.getItem(storageKey) || 'null');
+let user = null;
 let currentGame = null;
 let gameState = { index: 0, score: 0, answered: false, hint: false, level: 'Facil', results: [] };
 function currentQuestions() { return currentGame.questions[gameState.level]; }
 function activeDays(played) { return new Set(played.map(item => item.date)).size; }
 
-function saveUser() { localStorage.setItem(storageKey, JSON.stringify(user)); }
+async function api(action, payload = {}) {
+  const response = await fetch(`api.php?action=${action}`, {
+    method: action === 'me' ? 'GET' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: action === 'me' ? undefined : JSON.stringify(payload)
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Não foi possível concluir a operação.');
+  return data;
+}
+
+async function saveUser() {
+  const data = await api('save', user);
+  user = data.user;
+}
 function initials(name) { return name.split(' ').map(word => word[0]).slice(0, 2).join('').toUpperCase(); }
 function render() { user ? renderDashboard() : renderAuth(); }
+function currentTheme() { return document.documentElement.dataset.theme || 'light'; }
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem(themeKey, theme);
+}
+function themeToggle() {
+  const dark = currentTheme() === 'dark';
+  return `<button class="theme-toggle" id="theme-toggle" type="button" aria-label="Ativar modo ${dark ? 'claro' : 'escuro'}" title="Modo ${dark ? 'claro' : 'escuro'}">${dark ? '☀ Modo claro' : '☾ Modo escuro'}</button>`;
+}
+function bindThemeToggle() {
+  document.querySelector('#theme-toggle')?.addEventListener('click', () => {
+    applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+    render();
+  });
+}
 
 function renderAuth(register = false) {
   app.innerHTML = `<div class="auth-view">
-    <section class="auth-art"><div class="brand"><span class="brand-mark">+</span> mathplay</div><div class="art-copy"><div class="eyebrow">Missão: aprender brincando</div><h1>Matemática que ganha vida.</h1><p>Uma trilha de desafios para transformar cada acerto em uma nova descoberta.</p></div></section>
+    <section class="auth-art"><div class="brand"><span class="brand-mark">+</span> mathplay</div>${themeToggle()}<div class="art-copy"><div class="eyebrow">Missão: aprender brincando</div><h1>Matemática que ganha vida.</h1><p>Uma trilha de desafios para transformar cada acerto em uma nova descoberta.</p></div></section>
     <section class="auth-panel"><form class="auth-card" id="auth-form"><div class="eyebrow">Portal do aluno</div><h2>${register ? 'Crie seu perfil' : 'Boas-vindas de volta'}</h2><p>${register ? 'Monte sua jornada e comece a jogar.' : 'Entre para continuar sua trilha de aprendizagem.'}</p>
       ${register ? '<div class="field"><label for="name">Como podemos te chamar?</label><input id="name" required placeholder="Seu nome"></div>' : ''}
       <div class="field"><label for="email">E-mail</label><input id="email" type="email" required placeholder="você@email.com"></div>
@@ -136,20 +166,25 @@ function renderAuth(register = false) {
     </form></section></div>`;
   document.querySelector('#auth-form').addEventListener('submit', handleAuth);
   document.querySelector('#toggle-auth').addEventListener('click', () => renderAuth(!register));
+  bindThemeToggle();
 }
 
-function handleAuth(event) {
+async function handleAuth(event) {
   event.preventDefault();
   const email = document.querySelector('#email').value.trim();
   const password = document.querySelector('#password').value;
   const nameField = document.querySelector('#name');
-  const existing = JSON.parse(localStorage.getItem(storageKey) || 'null');
-  if (!nameField && (!existing || existing.email !== email || existing.password !== password)) {
-    document.querySelector('#auth-error').textContent = 'E-mail ou senha nao conferem.';
-    return;
+  const error = document.querySelector('#auth-error');
+  error.textContent = '';
+  try {
+    const data = await api(nameField ? 'register' : 'login', {
+      name: nameField?.value.trim(), email, password
+    });
+    user = data.user;
+    render();
+  } catch (requestError) {
+    error.textContent = requestError.message;
   }
-  user = nameField ? { name: nameField.value.trim(), email, password, totalScore: 0, played: [], badges: [] } : existing;
-  saveUser(); render();
 }
 
 function renderDashboard() {
@@ -157,14 +192,15 @@ function renderDashboard() {
   const played = user.played || [];
   const journeyDays = activeDays(played);
   const accuracy = played.length ? Math.round(played.reduce((sum, item) => sum + item.accuracy, 0) / played.length) : 0;
-  app.innerHTML = `<div class="dashboard"><header class="topbar"><div class="brand"><span class="brand-mark">+</span> mathplay</div><div class="topbar-actions"><span class="user-name">${user.name}</span><span class="avatar">${initials(user.name)}</span><button class="ghost-btn" id="logout">Sair</button></div></header><main>
+  app.innerHTML = `<div class="dashboard"><header class="topbar"><div class="brand"><span class="brand-mark">+</span> mathplay</div><div class="topbar-actions">${themeToggle()}<span class="user-name">${user.name}</span><span class="avatar">${initials(user.name)}</span><button class="ghost-btn" id="logout">Sair</button></div></header><main>
     <section class="hero"><div><div class="eyebrow">Sua central de descobertas</div><h1>Olá, ${user.name.split(' ')[0]}.</h1><p>Escolha um desafio e avance um passo na sua trilha.</p></div><div class="streak"><strong>${journeyDays} ${journeyDays === 1 ? 'dia' : 'dias'}</strong><span>de jornada ativa</span></div></section>
     <section class="stats"><div class="stat"><b>${total}</b><small>pontos acumulados</small></div><div class="stat"><b>${played.length}</b><small>desafios concluídos</small></div><div class="stat"><b>${accuracy}%</b><small>taxa de acerto</small></div></section>
     <div class="section-head"><h2>Trilha de aprendizagem</h2><span>4 mundos para explorar</span></div><section class="games">${games.map(game => gameCard(game, played)).join('')}</section>
     <section class="activity"><div class="panel"><div class="section-head"><h3>Medalhas</h3><span>${user.badges?.length || 0}/4</span></div><div class="badges">${badge('Primeiro passo', '★', (user.badges || []).includes('first'))}${badge('Mente afiada', '✦', (user.badges || []).includes('sharp'))}${badge('Explorador', '◆', (user.badges || []).includes('explorer'))}${badge('Mestre MathPlay', '♛', (user.badges || []).includes('master'))}</div></div><div class="panel"><div class="section-head"><h3>Atividade recente</h3><span>${played.length ? 'últimos jogos' : 'ainda vazio'}</span></div>${played.length ? played.slice(-3).reverse().map(item => `<div class="history-row"><span>${item.title}<br><small>${item.date}</small></span><span class="score">+${item.score} pts</span></div>`).join('') : '<p style="color:var(--muted);font-size:13px">Seu histórico aparece aqui depois da primeira partida.</p>'}</div></section>
   </main></div>`;
-  document.querySelector('#logout').addEventListener('click', () => { user = null; render(); });
+  document.querySelector('#logout').addEventListener('click', async () => { await api('logout'); user = null; render(); });
   document.querySelectorAll('[data-game]').forEach(button => button.addEventListener('click', () => openGame(button.dataset.game)));
+  bindThemeToggle();
 }
 function badge(label, symbol, unlocked) { return `<div class="badge ${unlocked ? '' : 'locked'}"><span>${symbol}</span>${label}</div>`; }
 function gameCard(game, played) { const result = played.filter(item => item.id === game.id).at(-1); const progress = result ? Math.min(100, result.accuracy + 20) : 0; return `<article class="game-card"><div><div class="game-icon">${game.icon}</div><h3>${game.title}</h3><p>${game.description}</p></div><div><div class="progress-wrap"><div class="progress-line"><i style="width:${progress}%"></i></div></div><button class="game-link" data-game="${game.id}">Jogar agora <span>↗</span></button></div></article>`; }
@@ -172,7 +208,8 @@ function gameCard(game, played) { const result = played.filter(item => item.id =
 function openGame(id) { currentGame = games.find(game => game.id === id); gameState = { index: 0, score: 0, answered: false, hint: false, level: 'Facil', results: [] }; renderGameModal(); }
 function renderGameModal() { const questions = currentQuestions(); const question = questions[gameState.index]; const levelLabels = { Facil: 'Fácil', Medio: 'Médio', Dificil: 'Difícil' }; document.querySelector('#game-modal')?.remove(); app.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="game-modal"><section class="game-modal"><div class="modal-top"><div><div class="eyebrow">Desafio ${gameState.index + 1} de ${questions.length}</div><h2>${currentGame.title}</h2></div><button class="close-btn" id="close-game" aria-label="Fechar">×</button></div><p class="intro">Resolva a questão para liberar a próxima etapa.</p><div class="level-tabs">${['Facil', 'Medio', 'Dificil'].map(level => `<button class="${gameState.level === level ? 'active' : ''}" data-level="${level}">${levelLabels[level]}</button>`).join('')}</div><div class="question-box"><p class="question">${question.q}</p><div class="answer-grid">${question.options.map(option => `<button class="answer-btn" data-answer="${option}">${option}</button>`).join('')}</div></div><div class="hint" id="hint">${gameState.hint ? 'Dica: ' + question.hint : 'A dica progressiva está disponível quando precisar.'}</div><div class="modal-footer"><span class="game-meta">${gameState.score} pontos nesta partida</span><button class="ghost-btn" id="hint-btn">${gameState.hint ? 'Dica exibida' : 'Pedir dica'}</button></div></section></div>`); document.querySelector('#close-game').addEventListener('click', closeGame); document.querySelector('#hint-btn').addEventListener('click', () => { gameState.hint = true; renderGameModal(); }); document.querySelectorAll('[data-level]').forEach(button => button.addEventListener('click', () => { gameState.level = button.dataset.level; gameState.index = 0; gameState.answered = false; gameState.hint = false; renderGameModal(); })); document.querySelectorAll('[data-answer]').forEach(button => button.addEventListener('click', () => answer(button, question))); }
 function answer(button, question) { if (gameState.answered) return; gameState.answered = true; const questions = currentQuestions(); const correct = button.dataset.answer === question.answer; gameState.results.push({ question: question.q, answer: button.dataset.answer, correctAnswer: question.answer, correct }); button.classList.add(correct ? 'correct' : 'wrong'); document.querySelectorAll('[data-answer]').forEach(option => { if (option.dataset.answer === question.answer) option.classList.add('correct'); }); gameState.score += correct ? (gameState.level === 'Dificil' ? 150 : gameState.level === 'Medio' ? 125 : 100) : 0; const footer = document.querySelector('.modal-footer'); footer.innerHTML = `<span class="game-meta">${correct ? 'Muito bem! + pontos' : 'Quase! A resposta correta está destacada.'}</span><button class="primary-btn" id="next-question">${gameState.index === questions.length - 1 ? 'Ver resultado' : 'Continuar'} →</button>`; document.querySelector('#next-question').addEventListener('click', () => { if (gameState.index === questions.length - 1) finishGame(); else { gameState.index++; gameState.answered = false; gameState.hint = false; renderGameModal(); } }); }
-function finishGame() { const questions = currentQuestions(); const correctCount = gameState.results.filter(result => result.correct).length; const accuracy = Math.round((correctCount / questions.length) * 100); user.totalScore = (user.totalScore || 0) + gameState.score; user.played = [...(user.played || []), { id: currentGame.id, title: currentGame.title, score: gameState.score, accuracy, date: new Date().toLocaleDateString('pt-BR') }]; user.badges = [...new Set([...(user.badges || []), ...(user.played.length === 1 ? ['first'] : []), ...(accuracy === 100 ? ['sharp'] : []), ...(new Set(user.played.map(item => item.id)).size === 4 ? ['explorer'] : []), ...(user.totalScore >= 1000 ? ['master'] : [])])]; saveUser(); renderResults(correctCount, accuracy); }
+async function finishGame() { const questions = currentQuestions(); const correctCount = gameState.results.filter(result => result.correct).length; const accuracy = Math.round((correctCount / questions.length) * 100); user.totalScore = (user.totalScore || 0) + gameState.score; user.played = [...(user.played || []), { id: currentGame.id, title: currentGame.title, score: gameState.score, accuracy, date: new Date().toLocaleDateString('pt-BR') }]; user.badges = [...new Set([...(user.badges || []), ...(user.played.length === 1 ? ['first'] : []), ...(accuracy === 100 ? ['sharp'] : []), ...(new Set(user.played.map(item => item.id)).size === 4 ? ['explorer'] : []), ...(user.totalScore >= 1000 ? ['master'] : [])])]; try { await saveUser(); renderResults(correctCount, accuracy); } catch (requestError) { alert(requestError.message); } }
 function renderResults(correctCount, accuracy) { const rows = gameState.results.map((result, index) => `<div class="result-row"><span class="result-status ${result.correct ? 'is-correct' : 'is-wrong'}">${result.correct ? '✓' : '×'}</span><div><strong>${index + 1}. ${result.question}</strong><small>Sua resposta: ${result.answer}${result.correct ? '' : ` · Correta: ${result.correctAnswer}`}</small></div></div>`).join(''); document.querySelector('#game-modal')?.remove(); app.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="game-modal"><section class="game-modal results-modal"><div class="modal-top"><div><div class="eyebrow">Resultado da partida</div><h2>${currentGame.title}</h2></div><button class="close-btn" id="close-game" aria-label="Fechar">×</button></div><div class="result-summary"><strong>${correctCount}/${gameState.results.length}</strong><span>${accuracy}% de acerto · ${gameState.score} pontos</span></div><div class="results-list">${rows}</div><button class="primary-btn result-done" id="result-done">Voltar para a trilha</button></section></div>`); document.querySelector('#close-game').addEventListener('click', () => { closeGame(); renderDashboard(); }); document.querySelector('#result-done').addEventListener('click', () => { closeGame(); renderDashboard(); }); }
 function closeGame() { document.querySelector('#game-modal')?.remove(); }
-render();
+applyTheme(localStorage.getItem(themeKey) || 'light');
+api('me').then(data => { user = data.user; render(); }).catch(() => render());
