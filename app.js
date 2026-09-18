@@ -117,9 +117,40 @@ games.forEach(game => {
 
 let user = null;
 let currentGame = null;
+const HINT_COST = 10;
+const motivationMessages = [
+  'Cada tentativa deixa você mais perto de dominar a matemática.',
+  'Continue assim: aprender também é descobrir o caminho.',
+  'Você está construindo seu raciocínio passo a passo.',
+  'Você está indo bem, continue assim!',
+  'Foi por pouco, mas continue firme.',
+  'Foi quase... da próxima você acerta!'
+];
+const wrongMotivationMessages = [
+  'Não desista! Cada erro ajuda você a entender melhor.',
+  'Foi por pouco, mas continue firme.',
+  'Foi quase... da próxima você acerta!',
+  'Respire, tente outra vez e confie no seu raciocínio.',
+  'Errar faz parte do aprendizado. Você está evoluindo!',
+  'Na próxima tentativa você pode chegar lá!',
+  'Uma resposta errada não define você. Continue praticando.',
+  'Peça uma dica se precisar, mas não pare agora!'
+];
+const medals = [
+  { id: 'first', label: 'Primeiro passo', symbol: '★', requirement: 'Conclua seu primeiro desafio.', unlocks: profile => profile.played.length >= 1 },
+  { id: 'sharp', label: 'Mente afiada', symbol: '✦', requirement: 'Acerte 100% de uma partida.', unlocks: profile => profile.played.some(item => item.accuracy === 100) },
+  { id: 'explorer', label: 'Explorador', symbol: '◆', requirement: 'Jogue nos quatro mundos.', unlocks: profile => new Set(profile.played.map(item => item.id)).size >= 4 },
+  { id: 'master', label: 'Mestre MathPlay', symbol: '♛', requirement: 'Alcance 1.000 pontos acumulados.', unlocks: profile => profile.totalScore >= 1000 },
+  { id: 'dedicado', label: 'Dedicado', symbol: '●', requirement: 'Conclua cinco desafios.', unlocks: profile => profile.played.length >= 5 },
+  { id: 'perfectionist', label: 'Perfeccionista', symbol: '✓', requirement: 'Tenha duas partidas com 100% de acerto.', unlocks: profile => profile.played.filter(item => item.accuracy === 100).length >= 2 },
+  { id: 'specialist', label: 'Especialista', symbol: '◆', requirement: 'Alcance pelo menos 80% em cada mundo.', unlocks: profile => new Set(profile.played.filter(item => item.accuracy >= 80).map(item => item.id)).size >= 4 },
+  { id: 'legend', label: 'Lenda MathPlay', symbol: '♛', requirement: 'Alcance 2.000 pontos acumulados.', unlocks: profile => profile.totalScore >= 2000 }
+];
 let gameState = { index: 0, score: 0, answered: false, hint: false, level: 'Facil', results: [] };
 function currentQuestions() { return currentGame.questions[gameState.level]; }
 function activeDays(played) { return new Set(played.map(item => item.date)).size; }
+function unlockedMedals(profile) { return medals.filter(medal => medal.unlocks(profile)).map(medal => medal.id); }
+function motivation(correct) { const messages = correct ? motivationMessages : wrongMotivationMessages; return messages[gameState.results.length % messages.length]; }
 
 async function api(action, payload = {}) {
   const response = await fetch(`api.php?action=${action}`, {
@@ -162,12 +193,41 @@ function renderAuth(register = false) {
       <div class="field"><label for="email">E-mail</label><input id="email" type="email" required placeholder="você@email.com"></div>
       <div class="field"><label for="password">Senha</label><input id="password" type="password" minlength="4" required placeholder="Mínimo de 4 caracteres"></div>
       <div class="error" id="auth-error"></div><button class="primary-btn auth-submit">${register ? 'Criar minha conta' : 'Entrar na MathPlay'} <span aria-hidden="true">→</span></button>
+      <div class="auth-divider"><span>ou</span></div><button class="google-btn" type="button" id="google-login"><span class="google-mark">G</span> Continuar com o Google</button><p class="google-note">Entre usando sua conta Gmail.</p>
       <p class="auth-switch">${register ? 'Ja tem uma conta?' : 'Ainda nao tem uma conta?'} <button class="text-btn" type="button" id="toggle-auth">${register ? 'Fazer login' : 'Criar agora'}</button></p>
     </form></section></div>`;
   document.querySelector('#auth-form').addEventListener('submit', handleAuth);
+  document.querySelector('#google-login').addEventListener('click', startGoogleLogin);
   document.querySelector('#toggle-auth').addEventListener('click', () => renderAuth(!register));
   bindThemeToggle();
 }
+
+function startGoogleLogin() {
+  const error = document.querySelector('#auth-error');
+  if (!window.mathplayGoogleClientId) {
+    error.textContent = 'Configure o Client ID do Google no servidor para ativar este login.';
+    return;
+  }
+  if (!window.google?.accounts?.id) {
+    error.textContent = 'O login Google ainda não foi configurado. Defina o Client ID OAuth no servidor.';
+    return;
+  }
+  window.google.accounts.id.prompt();
+}
+
+async function handleGoogleCredential(response) {
+  const error = document.querySelector('#auth-error');
+  error.textContent = '';
+  try {
+    const data = await api('google-login', { credential: response.credential });
+    user = data.user;
+    render();
+  } catch (requestError) {
+    error.textContent = requestError.message;
+  }
+}
+
+window.handleGoogleCredential = handleGoogleCredential;
 
 async function handleAuth(event) {
   event.preventDefault();
@@ -190,26 +250,29 @@ async function handleAuth(event) {
 function renderDashboard() {
   const total = user.totalScore || 0;
   const played = user.played || [];
+  const earnedMedals = medals.filter(medal => (user.badges || []).includes(medal.id));
   const journeyDays = activeDays(played);
   const accuracy = played.length ? Math.round(played.reduce((sum, item) => sum + item.accuracy, 0) / played.length) : 0;
   app.innerHTML = `<div class="dashboard"><header class="topbar"><div class="brand"><span class="brand-mark">+</span> mathplay</div><div class="topbar-actions">${themeToggle()}<span class="user-name">${user.name}</span><span class="avatar">${initials(user.name)}</span><button class="ghost-btn" id="logout">Sair</button></div></header><main>
     <section class="hero"><div><div class="eyebrow">Sua central de descobertas</div><h1>Olá, ${user.name.split(' ')[0]}.</h1><p>Escolha um desafio e avance um passo na sua trilha.</p></div><div class="streak"><strong>${journeyDays} ${journeyDays === 1 ? 'dia' : 'dias'}</strong><span>de jornada ativa</span></div></section>
     <section class="stats"><div class="stat"><b>${total}</b><small>pontos acumulados</small></div><div class="stat"><b>${played.length}</b><small>desafios concluídos</small></div><div class="stat"><b>${accuracy}%</b><small>taxa de acerto</small></div></section>
     <div class="section-head"><h2>Trilha de aprendizagem</h2><span>4 mundos para explorar</span></div><section class="games">${games.map(game => gameCard(game, played)).join('')}</section>
-    <section class="activity"><div class="panel"><div class="section-head"><h3>Medalhas</h3><span>${user.badges?.length || 0}/4</span></div><div class="badges">${badge('Primeiro passo', '★', (user.badges || []).includes('first'))}${badge('Mente afiada', '✦', (user.badges || []).includes('sharp'))}${badge('Explorador', '◆', (user.badges || []).includes('explorer'))}${badge('Mestre MathPlay', '♛', (user.badges || []).includes('master'))}</div></div><div class="panel"><div class="section-head"><h3>Atividade recente</h3><span>${played.length ? 'últimos jogos' : 'ainda vazio'}</span></div>${played.length ? played.slice(-3).reverse().map(item => `<div class="history-row"><span>${item.title}<br><small>${item.date}</small></span><span class="score">+${item.score} pts</span></div>`).join('') : '<p style="color:var(--muted);font-size:13px">Seu histórico aparece aqui depois da primeira partida.</p>'}</div></section>
+    <section class="activity"><div class="panel"><div class="section-head"><h3>Medalhas conquistadas</h3><span>${earnedMedals.length}/${medals.length}</span></div><div class="badges">${earnedMedals.length ? earnedMedals.map(medal => badge(medal.label, medal.symbol, true)).join('') : '<p class="empty-medals">Conclua um desafio para conquistar sua primeira medalha.</p>'}</div></div><div class="panel"><div class="section-head"><h3>Atividade recente</h3><span>${played.length ? 'últimos jogos' : 'ainda vazio'}</span></div>${played.length ? played.slice(-3).reverse().map(item => `<div class="history-row"><span>${item.title}<br><small>${item.date}</small></span><span class="score">+${item.score} pts</span></div>`).join('') : '<p style="color:var(--muted);font-size:13px">Seu histórico aparece aqui depois da primeira partida.</p>'}</div></section>
+    <section class="medals-section"><div class="section-head"><div><h2>Todas as medalhas</h2><span>Veja como desbloquear cada conquista.</span></div><span>${earnedMedals.length} conquistadas</span></div><div class="all-medals">${medals.map(medal => medalCard(medal, (user.badges || []).includes(medal.id))).join('')}</div></section>
   </main></div>`;
   document.querySelector('#logout').addEventListener('click', async () => { await api('logout'); user = null; render(); });
   document.querySelectorAll('[data-game]').forEach(button => button.addEventListener('click', () => openGame(button.dataset.game)));
   bindThemeToggle();
 }
 function badge(label, symbol, unlocked) { return `<div class="badge ${unlocked ? '' : 'locked'}"><span>${symbol}</span>${label}</div>`; }
+function medalCard(medal, unlocked) { return `<article class="medal-card ${unlocked ? 'is-earned' : 'is-locked'}"><div class="medal-card-icon">${medal.symbol}</div><div><h3>${medal.label}</h3><p>${medal.requirement}</p><strong>${unlocked ? 'Conquistada' : 'Ainda não desbloqueada'}</strong></div></article>`; }
 function gameCard(game, played) { const result = played.filter(item => item.id === game.id).at(-1); const progress = result ? Math.min(100, result.accuracy + 20) : 0; return `<article class="game-card"><div><div class="game-icon">${game.icon}</div><h3>${game.title}</h3><p>${game.description}</p></div><div><div class="progress-wrap"><div class="progress-line"><i style="width:${progress}%"></i></div></div><button class="game-link" data-game="${game.id}">Jogar agora <span>↗</span></button></div></article>`; }
 
 function openGame(id) { currentGame = games.find(game => game.id === id); gameState = { index: 0, score: 0, answered: false, hint: false, level: 'Facil', results: [] }; renderGameModal(); }
-function renderGameModal() { const questions = currentQuestions(); const question = questions[gameState.index]; const levelLabels = { Facil: 'Fácil', Medio: 'Médio', Dificil: 'Difícil' }; document.querySelector('#game-modal')?.remove(); app.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="game-modal"><section class="game-modal"><div class="modal-top"><div><div class="eyebrow">Desafio ${gameState.index + 1} de ${questions.length}</div><h2>${currentGame.title}</h2></div><button class="close-btn" id="close-game" aria-label="Fechar">×</button></div><p class="intro">Resolva a questão para liberar a próxima etapa.</p><div class="level-tabs">${['Facil', 'Medio', 'Dificil'].map(level => `<button class="${gameState.level === level ? 'active' : ''}" data-level="${level}">${levelLabels[level]}</button>`).join('')}</div><div class="question-box"><p class="question">${question.q}</p><div class="answer-grid">${question.options.map(option => `<button class="answer-btn" data-answer="${option}">${option}</button>`).join('')}</div></div><div class="hint" id="hint">${gameState.hint ? 'Dica: ' + question.hint : 'A dica progressiva está disponível quando precisar.'}</div><div class="modal-footer"><span class="game-meta">${gameState.score} pontos nesta partida</span><button class="ghost-btn" id="hint-btn">${gameState.hint ? 'Dica exibida' : 'Pedir dica'}</button></div></section></div>`); document.querySelector('#close-game').addEventListener('click', closeGame); document.querySelector('#hint-btn').addEventListener('click', () => { gameState.hint = true; renderGameModal(); }); document.querySelectorAll('[data-level]').forEach(button => button.addEventListener('click', () => { gameState.level = button.dataset.level; gameState.index = 0; gameState.answered = false; gameState.hint = false; renderGameModal(); })); document.querySelectorAll('[data-answer]').forEach(button => button.addEventListener('click', () => answer(button, question))); }
-function answer(button, question) { if (gameState.answered) return; gameState.answered = true; const questions = currentQuestions(); const correct = button.dataset.answer === question.answer; gameState.results.push({ question: question.q, answer: button.dataset.answer, correctAnswer: question.answer, correct }); button.classList.add(correct ? 'correct' : 'wrong'); document.querySelectorAll('[data-answer]').forEach(option => { if (option.dataset.answer === question.answer) option.classList.add('correct'); }); gameState.score += correct ? (gameState.level === 'Dificil' ? 150 : gameState.level === 'Medio' ? 125 : 100) : 0; const footer = document.querySelector('.modal-footer'); footer.innerHTML = `<span class="game-meta">${correct ? 'Muito bem! + pontos' : 'Quase! A resposta correta está destacada.'}</span><button class="primary-btn" id="next-question">${gameState.index === questions.length - 1 ? 'Ver resultado' : 'Continuar'} →</button>`; document.querySelector('#next-question').addEventListener('click', () => { if (gameState.index === questions.length - 1) finishGame(); else { gameState.index++; gameState.answered = false; gameState.hint = false; renderGameModal(); } }); }
-async function finishGame() { const questions = currentQuestions(); const correctCount = gameState.results.filter(result => result.correct).length; const accuracy = Math.round((correctCount / questions.length) * 100); user.totalScore = (user.totalScore || 0) + gameState.score; user.played = [...(user.played || []), { id: currentGame.id, title: currentGame.title, score: gameState.score, accuracy, date: new Date().toLocaleDateString('pt-BR') }]; user.badges = [...new Set([...(user.badges || []), ...(user.played.length === 1 ? ['first'] : []), ...(accuracy === 100 ? ['sharp'] : []), ...(new Set(user.played.map(item => item.id)).size === 4 ? ['explorer'] : []), ...(user.totalScore >= 1000 ? ['master'] : [])])]; try { await saveUser(); renderResults(correctCount, accuracy); } catch (requestError) { alert(requestError.message); } }
-function renderResults(correctCount, accuracy) { const rows = gameState.results.map((result, index) => `<div class="result-row"><span class="result-status ${result.correct ? 'is-correct' : 'is-wrong'}">${result.correct ? '✓' : '×'}</span><div><strong>${index + 1}. ${result.question}</strong><small>Sua resposta: ${result.answer}${result.correct ? '' : ` · Correta: ${result.correctAnswer}`}</small></div></div>`).join(''); document.querySelector('#game-modal')?.remove(); app.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="game-modal"><section class="game-modal results-modal"><div class="modal-top"><div><div class="eyebrow">Resultado da partida</div><h2>${currentGame.title}</h2></div><button class="close-btn" id="close-game" aria-label="Fechar">×</button></div><div class="result-summary"><strong>${correctCount}/${gameState.results.length}</strong><span>${accuracy}% de acerto · ${gameState.score} pontos</span></div><div class="results-list">${rows}</div><button class="primary-btn result-done" id="result-done">Voltar para a trilha</button></section></div>`); document.querySelector('#close-game').addEventListener('click', () => { closeGame(); renderDashboard(); }); document.querySelector('#result-done').addEventListener('click', () => { closeGame(); renderDashboard(); }); }
+function renderGameModal() { const questions = currentQuestions(); const question = questions[gameState.index]; const levelLabels = { Facil: 'Fácil', Medio: 'Médio', Dificil: 'Difícil' }; document.querySelector('#game-modal')?.remove(); app.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="game-modal"><section class="game-modal"><div class="modal-top"><div><div class="eyebrow">Desafio ${gameState.index + 1} de ${questions.length}</div><h2>${currentGame.title}</h2></div><button class="close-btn" id="close-game" aria-label="Fechar">×</button></div><p class="intro">Resolva a questão para liberar a próxima etapa.</p><div class="level-tabs">${['Facil', 'Medio', 'Dificil'].map(level => `<button class="${gameState.level === level ? 'active' : ''}" data-level="${level}">${levelLabels[level]}</button>`).join('')}</div><div class="question-box"><p class="question">${question.q}</p><p class="question-motivation">${motivationMessages[gameState.index % motivationMessages.length]}</p><div class="answer-grid">${question.options.map(option => `<button class="answer-btn" data-answer="${option}">${option}</button>`).join('')}</div></div><div class="hint" id="hint">${gameState.hint ? `Dica: ${question.hint} (custo: ${HINT_COST} pontos nesta questão)` : `<strong>Atenção: a dica custa ${HINT_COST} pontos.</strong> Use somente quando precisar, sem desistir!`}</div><div class="modal-footer"><span class="game-meta">${gameState.score} pontos nesta partida</span><button class="ghost-btn" id="hint-btn" ${gameState.hint ? 'disabled' : ''}>${gameState.hint ? 'Dica exibida' : `Pedir dica (-${HINT_COST} pts)`}</button></div></section></div>`); document.querySelector('#close-game').addEventListener('click', closeGame); document.querySelector('#hint-btn').addEventListener('click', () => { gameState.hint = true; renderGameModal(); }); document.querySelectorAll('[data-level]').forEach(button => button.addEventListener('click', () => { gameState.level = button.dataset.level; gameState.index = 0; gameState.answered = false; gameState.hint = false; renderGameModal(); })); document.querySelectorAll('[data-answer]').forEach(button => button.addEventListener('click', () => answer(button, question))); }
+function answer(button, question) { if (gameState.answered) return; gameState.answered = true; const questions = currentQuestions(); const correct = button.dataset.answer === question.answer; const basePoints = gameState.level === 'Dificil' ? 150 : gameState.level === 'Medio' ? 125 : 100; const pointsEarned = correct ? Math.max(0, basePoints - (gameState.hint ? HINT_COST : 0)) : 0; gameState.results.push({ question: question.q, answer: button.dataset.answer, correctAnswer: question.answer, correct }); button.classList.add(correct ? 'correct' : 'wrong'); document.querySelectorAll('[data-answer]').forEach(option => { if (option.dataset.answer === question.answer) option.classList.add('correct'); }); gameState.score += pointsEarned; document.querySelector('.question-motivation').textContent = motivation(correct); const feedback = correct ? `Muito bem! +${pointsEarned} pontos.` : 'Quase! A resposta correta está destacada.'; const footer = document.querySelector('.modal-footer'); footer.innerHTML = `<span class="game-meta">${feedback}</span><button class="primary-btn" id="next-question">${gameState.index === questions.length - 1 ? 'Ver resultado' : 'Continuar'} →</button>`; document.querySelector('#next-question').addEventListener('click', () => { if (gameState.index === questions.length - 1) finishGame(); else { gameState.index++; gameState.answered = false; gameState.hint = false; renderGameModal(); } }); }
+async function finishGame() { const questions = currentQuestions(); const correctCount = gameState.results.filter(result => result.correct).length; const accuracy = Math.round((correctCount / questions.length) * 100); user.totalScore = (user.totalScore || 0) + gameState.score; user.played = [...(user.played || []), { id: currentGame.id, title: currentGame.title, score: gameState.score, accuracy, date: new Date().toLocaleDateString('pt-BR') }]; user.badges = [...new Set([...user.badges || [], ...unlockedMedals(user)])]; try { await saveUser(); renderResults(correctCount, accuracy); } catch (requestError) { alert(requestError.message); } }
+function renderResults(correctCount, accuracy) { const rows = gameState.results.map((result, index) => `<div class="result-row"><span class="result-status ${result.correct ? 'is-correct' : 'is-wrong'}">${result.correct ? '✓' : '×'}</span><div><strong>${index + 1}. ${result.question}</strong><small>Sua resposta: ${result.answer}${result.correct ? '' : ` · Correta: ${result.correctAnswer}`}</small></div></div>`).join(''); const resultMessage = accuracy === 100 ? 'Excelente! Você resolveu tudo com muita atenção.' : accuracy >= 60 ? 'Muito bom! Continue praticando para ficar ainda melhor.' : 'Da próxima vez, peça uma dica, mas não desista. Cada tentativa ensina algo novo.'; document.querySelector('#game-modal')?.remove(); app.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="game-modal"><section class="game-modal results-modal"><div class="modal-top"><div><div class="eyebrow">Resultado da partida</div><h2>${currentGame.title}</h2></div><button class="close-btn" id="close-game" aria-label="Fechar">×</button></div><div class="result-summary"><strong>${correctCount}/${gameState.results.length}</strong><span>${accuracy}% de acerto · ${gameState.score} pontos</span></div><p class="motivation-message">${resultMessage}</p><div class="results-list">${rows}</div><button class="primary-btn result-done" id="result-done">Voltar para a trilha</button></section></div>`); document.querySelector('#close-game').addEventListener('click', () => { closeGame(); renderDashboard(); }); document.querySelector('#result-done').addEventListener('click', () => { closeGame(); renderDashboard(); }); }
 function closeGame() { document.querySelector('#game-modal')?.remove(); }
 applyTheme(localStorage.getItem(themeKey) || 'light');
 api('me').then(data => { user = data.user; render(); }).catch(() => render());

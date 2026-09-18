@@ -91,6 +91,43 @@ if ($action === 'login') {
     respond(['user' => publicUser($user)]);
 }
 
+if ($action === 'google-login') {
+    $credential = (string) ($input['credential'] ?? '');
+    $googleClientId = trim((string) getenv('MATHPLAY_GOOGLE_CLIENT_ID'));
+    if ($googleClientId === '') {
+        respond(['error' => 'Configure MATHPLAY_GOOGLE_CLIENT_ID para ativar o login Google.'], 503);
+    }
+    if ($credential === '') {
+        respond(['error' => 'Credencial Google ausente.'], 422);
+    }
+
+    $tokenData = json_decode((string) @file_get_contents('https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($credential)), true);
+    if (!is_array($tokenData) || ($tokenData['aud'] ?? '') !== $googleClientId || ($tokenData['email_verified'] ?? '') !== 'true') {
+        respond(['error' => 'Não foi possível validar essa conta Google.'], 401);
+    }
+
+    $email = strtolower(trim((string) ($tokenData['email'] ?? '')));
+    $name = trim((string) ($tokenData['name'] ?? $email));
+    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        respond(['error' => 'A conta Google não forneceu um e-mail válido.'], 422);
+    }
+    if (!isset($users[$email])) {
+        $users[$email] = [
+            'name' => $name,
+            'email' => $email,
+            'password' => password_hash(bin2hex(random_bytes(24)), PASSWORD_DEFAULT),
+            'totalScore' => 0,
+            'played' => [],
+            'badges' => [],
+            'provider' => 'google',
+        ];
+        writeUsers($dataFile, $users);
+    }
+
+    $_SESSION['email'] = $email;
+    respond(['user' => publicUser($users[$email])]);
+}
+
 if ($action === 'save') {
     $email = $_SESSION['email'] ?? null;
     if (!$email || !isset($users[$email])) {

@@ -1,0 +1,50 @@
+{
+    "gabriel.m.oliveira37@aluno.senai.br": {
+        "name": "Gabriel Mariano de Oliveira",
+        "email": "gabriel.m.oliveira37@aluno.senai.br",
+        "password": "$2y$10$e1tvWLeJV6DulLFqjFFvHeLArMtu\/9kXQhf8cN5aDsPrBzhCG0Mu6",
+        "totalScore": 800,
+        "played": [
+            {
+                "id": "inteiros",
+                "title": "Expedição dos Inteiros",
+                "score": 300,
+                "accuracy": 60,
+                "date": "18\/09\/2026"
+            },
+            {
+                "id": "equacoes",
+                "title": "Cofre do Equilíbrio",
+                "score": 200,
+                "accuracy": 40,
+                "date": "18\/09\/2026"
+            },
+            {
+                "id": "inteiros",
+                "title": "Expedição dos Inteiros",
+                "score": 100,
+                "accuracy": 20,
+                "date": "18\/09\/2026"
+            },
+            {
+                "id": "porcentagem",
+                "title": "Mercado em Ação",
+                "score": 200,
+                "accuracy": 40,
+                "date": "18\/09\/2026"
+            },
+            {
+                "id": "fracoes",
+                "title": "Cozinha das Frações",
+                "score": 0,
+                "accuracy": 0,
+                "date": "18\/09\/2026"
+            }
+        ],
+        "badges": [
+            "first",
+            "explorer",
+            "dedicado"
+        ]
+    }
+}

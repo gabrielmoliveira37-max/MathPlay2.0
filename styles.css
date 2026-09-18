@@ -217,6 +217,55 @@ button {
   box-shadow: 0 12px 20px rgba(242, 107, 91, .28);
 }
 
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: var(--line);
+}
+
+.google-btn {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  background: var(--white);
+  font-weight: 700;
+}
+
+.google-btn:hover {
+  border-color: var(--ink);
+}
+
+.google-mark {
+  color: #4285f4;
+  font-family: Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.google-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+
 .ghost-btn {
   color: var(--ink);
   border: 1px solid var(--line);
@@ -546,6 +595,81 @@ main {
   opacity: .35;
 }
 
+.empty-medals {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.medals-section {
+  margin-top: 36px;
+}
+
+.medals-section .section-head {
+  align-items: end;
+}
+
+.medals-section .section-head h2 {
+  margin: 0 0 5px;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 21px;
+}
+
+.all-medals {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.medal-card {
+  display: flex;
+  gap: 12px;
+  min-height: 118px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: var(--white);
+}
+
+.medal-card-icon {
+  display: grid;
+  flex: 0 0 42px;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: var(--ink);
+  background: var(--yellow);
+  border-radius: 50%;
+  font-size: 20px;
+}
+
+.medal-card h3 {
+  margin: 0 0 5px;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 15px;
+}
+
+.medal-card p {
+  min-height: 34px;
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.medal-card strong {
+  color: #329479;
+  font-size: 11px;
+}
+
+.medal-card.is-locked .medal-card-icon {
+  filter: grayscale(1);
+  opacity: .35;
+}
+
+.medal-card.is-locked strong {
+  color: var(--muted);
+}
+
 .history-row {
   display: flex;
   align-items: center;
@@ -687,6 +811,14 @@ main {
   line-height: 1.4;
 }
 
+.question-motivation {
+  margin: 0 0 14px;
+  color: var(--coral);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .modal-footer {
   display: flex;
   justify-content: space-between;
@@ -718,6 +850,16 @@ main {
 .result-summary span {
   color: var(--muted);
   font-size: 13px;
+}
+
+.motivation-message {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  color: var(--ink);
+  background: #e8f4ef;
+  border-left: 4px solid var(--mint);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .results-list {
@@ -794,6 +936,10 @@ main {
   .games {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .all-medals {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 600px) {
@@ -853,7 +999,8 @@ main {
   }
 
   .games,
-  .activity {
+  .activity,
+  .all-medals {
     grid-template-columns: 1fr;
   }
 
