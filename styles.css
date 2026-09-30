@@ -602,7 +602,9 @@ main {
 }
 
 .medals-section {
-  margin-top: 36px;
+  margin-top: 42px;
+  padding-top: 30px;
+  border-top: 2px solid var(--line);
 }
 
 .medals-section .section-head {
@@ -617,17 +619,31 @@ main {
 
 .all-medals {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .medal-card {
   display: flex;
+  align-items: center;
   gap: 12px;
-  min-height: 118px;
+  min-width: 0;
+  min-height: 126px;
   padding: 16px;
   border: 1px solid var(--line);
   background: var(--white);
+}
+
+.medal-card:nth-child(4n + 2) .medal-card-icon {
+  background: var(--mint);
+}
+
+.medal-card:nth-child(4n + 3) .medal-card-icon {
+  background: var(--coral);
+}
+
+.medal-card:nth-child(4n) .medal-card-icon {
+  background: var(--blue);
 }
 
 .medal-card-icon {
@@ -639,7 +655,7 @@ main {
   color: var(--ink);
   background: var(--yellow);
   border-radius: 50%;
-  font-size: 20px;
+  font-size: 16px;
 }
 
 .medal-card h3 {
@@ -965,8 +981,19 @@ main {
     padding: 14px 20px;
   }
 
+  .dashboard .topbar {
+    position: relative;
+    align-items: flex-end;
+    padding-top: 62px;
+  }
+
+  .dashboard .theme-toggle {
+    top: 12px;
+    right: 20px;
+  }
+
   .dashboard .topbar-actions {
-    padding-right: 145px;
+    padding-right: 0;
   }
 
   .user-name {
@@ -1007,4 +1034,12 @@ main {
   .game-card {
     min-height: 220px;
   }
+}
+
+.question-motivation.is-correct {
+  color: #329479;
+}
+
+.question-motivation.is-wrong {
+  color: var(--coral);
 }
