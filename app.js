@@ -1,5 +1,21 @@
+
+
+
+
+
+import {
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  updateProfile
+} from 'https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js';
+import { doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js';
+import { auth, db } from './firebase.js?v=2';
+
 const app = document.querySelector('#app');
-const storageKey = 'mathplay-user';
 const themeKey = 'mathplay-theme';
 const games = [
   {
@@ -160,6 +176,8 @@ games.forEach(game => {
 });
 
 let user = null;
+let authMode = 'firebase';
+let authStateInitialized = false;
 let currentGame = null;
 const HINT_COST = 10;
 const motivationMessages = [
@@ -222,8 +240,28 @@ function prepareQuestionSets(game) {
   return questionSets;
 }
 
+function authErrorMessage(error) {
+  const messages = {
+    'auth/configuration-not-found': 'O Firebase Authentication não está configurado para este projeto. No Console do Firebase, abra mathplay-cf79f > Authentication e clique em Começar. Confira também se a API key em firebase.js pertence a esse projeto e não está bloqueada para a Identity Toolkit API.',
+    'auth/email-already-in-use': 'Este e-mail já está cadastrado.',
+    'auth/invalid-credential': 'E-mail ou senha não conferem.',
+    'auth/invalid-email': 'Informe um endereço de e-mail válido.',
+    'auth/operation-not-allowed': 'Ative este método de login no console do Firebase.',
+    'auth/popup-blocked': 'O navegador bloqueou a janela de login do Google.',
+    'auth/popup-closed-by-user': 'A janela de login do Google foi fechada.',
+    'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
+    'auth/network-request-failed': 'Não foi possível acessar o Firebase. Verifique sua conexão.',
+    'permission-denied': 'O Firestore recusou o acesso. Confira as regras em firestore.rules.'
+  };
+  return messages[error.code] || error.message || 'Não foi possível concluir a operação.';
+}
+
+function firebaseAuthUnavailable(error) {
+  return ['auth/configuration-not-found', 'auth/operation-not-allowed', 'auth/invalid-api-key'].includes(error.code);
+}
+
 async function api(action, payload = {}) {
-  const response = await fetch(`api.php?action=${action}`, {
+  const response = await fetch(`api.php?action=${encodeURIComponent(action)}`, {
     method: action === 'me' ? 'GET' : 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: action === 'me' ? undefined : JSON.stringify(payload)
@@ -233,9 +271,72 @@ async function api(action, payload = {}) {
   return data;
 }
 
+function userProfile(firebaseUser) {
+  if (!firebaseUser.email) {
+    throw new Error('Esta conta Firebase não tem um endereço de e-mail associado.');
+  }
+  return {
+    name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+    email: firebaseUser.email,
+    provider: firebaseUser.providerData.some(provider => provider.providerId === 'google.com') ? 'google' : 'password',
+    totalScore: 0,
+    played: [],
+    badges: []
+  };
+}
+
+async function getOrCreateUserProfile(firebaseUser, nameOverride = '') {
+  const profileRef = doc(db, 'users', firebaseUser.uid);
+  const profileSnapshot = await getDoc(profileRef);
+  if (profileSnapshot.exists()) {
+    const profile = profileSnapshot.data();
+    if (
+      typeof profile.name !== 'string'
+      || typeof profile.email !== 'string'
+      || !['google', 'password'].includes(profile.provider)
+      || !Number.isSafeInteger(profile.totalScore)
+      || profile.totalScore < 0
+      || !Array.isArray(profile.played)
+      || !Array.isArray(profile.badges)
+    ) {
+      throw new Error('O perfil salvo no Firestore está inválido. Verifique os dados deste usuário.');
+    }
+    if (nameOverride && profile.name !== nameOverride) {
+      await setDoc(profileRef, { name: nameOverride }, { merge: true });
+      profile.name = nameOverride;
+    }
+    return { uid: firebaseUser.uid, ...profile };
+  }
+
+  const profile = userProfile(firebaseUser);
+  if (nameOverride) profile.name = nameOverride;
+  await setDoc(profileRef, profile);
+  return { uid: firebaseUser.uid, ...profile };
+}
+
 async function saveUser() {
-  const data = await api('save', user);
-  user = data.user;
+  if (authMode === 'legacy') {
+    const data = await api('save', user);
+    user = data.user;
+    return;
+  }
+  const firebaseUser = auth.currentUser;
+  if (!firebaseUser || !user) {
+    throw new Error('Sua sessão expirou. Entre novamente para salvar seu progresso.');
+  }
+  if (!firebaseUser.email) {
+    throw new Error('Sua conta Firebase não tem um endereço de e-mail associado.');
+  }
+  const profile = {
+    name: user.name,
+    email: firebaseUser.email,
+    provider: user.provider,
+    totalScore: user.totalScore,
+    played: user.played,
+    badges: user.badges
+  };
+  await setDoc(doc(db, 'users', firebaseUser.uid), profile, { merge: true });
+  user = { uid: firebaseUser.uid, ...profile };
 }
 function initials(name) { return name.split(' ').map(word => word[0]).slice(0, 2).join('').toUpperCase(); }
 function render() { user ? renderDashboard() : renderAuth(); }
@@ -272,17 +373,23 @@ function renderAuth(register = false) {
   bindThemeToggle();
 }
 
-function startGoogleLogin() {
+async function startGoogleLogin() {
   const error = document.querySelector('#auth-error');
-  if (!window.mathplayGoogleClientId) {
-    error.textContent = 'Configure o Client ID do Google no servidor para ativar este login.';
-    return;
+  error.textContent = '';
+  try {
+    const credential = await signInWithPopup(auth, new GoogleAuthProvider());
+    user = await getOrCreateUserProfile(credential.user);
+    authMode = 'firebase';
+    render();
+  } catch (requestError) {
+    if (firebaseAuthUnavailable(requestError) && window.google?.accounts?.id) {
+      window.google.accounts.id.prompt();
+    } else if (firebaseAuthUnavailable(requestError)) {
+      error.textContent = 'O Firebase Authentication não está configurado. Para usar o acesso alternativo com Google, configure MATHPLAY_GOOGLE_CLIENT_ID no servidor.';
+    } else {
+      error.textContent = authErrorMessage(requestError);
+    }
   }
-  if (!window.google?.accounts?.id) {
-    error.textContent = 'O login Google ainda não foi configurado. Defina o Client ID OAuth no servidor.';
-    return;
-  }
-  window.google.accounts.id.prompt();
 }
 
 async function handleGoogleCredential(response) {
@@ -290,6 +397,7 @@ async function handleGoogleCredential(response) {
   error.textContent = '';
   try {
     const data = await api('google-login', { credential: response.credential });
+    authMode = 'legacy';
     user = data.user;
     render();
   } catch (requestError) {
@@ -307,13 +415,40 @@ async function handleAuth(event) {
   const error = document.querySelector('#auth-error');
   error.textContent = '';
   try {
-    const data = await api(nameField ? 'register' : 'login', {
-      name: nameField?.value.trim(), email, password
-    });
-    user = data.user;
-    render();
+    let name = '';
+    if (nameField) {
+      name = nameField.value.trim();
+      if (!name) {
+        error.textContent = 'Informe seu nome.';
+        return;
+      }
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(credential.user, { displayName: name });
+      authMode = 'firebase';
+      user = await getOrCreateUserProfile(credential.user, name);
+    } else {
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      authMode = 'firebase';
+      user = await getOrCreateUserProfile(credential.user);
+    }
   } catch (requestError) {
-    error.textContent = requestError.message;
+    const canUseLegacyLogin = !nameField
+      && ['auth/invalid-credential', 'auth/user-not-found'].includes(requestError.code);
+    const canUseLegacyRegistration = nameField && requestError.code === 'auth/weak-password';
+    if (!firebaseAuthUnavailable(requestError) && !canUseLegacyLogin && !canUseLegacyRegistration) {
+      error.textContent = authErrorMessage(requestError);
+      return;
+    }
+    try {
+      const data = await api(nameField ? 'register' : 'login', {
+        name: name || undefined, email, password
+      });
+      authMode = 'legacy';
+      user = data.user;
+      render();
+    } catch (legacyError) {
+      error.textContent = legacyError.message;
+    }
   }
 }
 
@@ -330,7 +465,19 @@ function renderDashboard() {
     <section class="activity"><div class="panel"><div class="section-head"><h3>Medalhas conquistadas</h3><span>${earnedMedals.length}/${medals.length}</span></div><div class="badges">${earnedMedals.length ? earnedMedals.map(medal => badge(medal.label, medal.symbol, true)).join('') : '<p class="empty-medals">Conclua um desafio para conquistar sua primeira medalha.</p>'}</div></div><div class="panel"><div class="section-head"><h3>Atividade recente</h3><span>${played.length ? 'últimos jogos' : 'ainda vazio'}</span></div>${played.length ? played.slice(-3).reverse().map(item => `<div class="history-row"><span>${item.title}<br><small>${item.date}</small></span><span class="score">+${item.score} pts</span></div>`).join('') : '<p style="color:var(--muted);font-size:13px">Seu histórico aparece aqui depois da primeira partida.</p>'}</div></section>
     <section class="medals-section"><div class="section-head"><div><h2>Todas as medalhas</h2><span>Veja como desbloquear cada conquista.</span></div><span>${earnedMedals.length} conquistadas</span></div><div class="all-medals">${medals.map(medal => medalCard(medal, (user.badges || []).includes(medal.id))).join('')}</div></section>
   </main></div>`;
-  document.querySelector('#logout').addEventListener('click', async () => { await api('logout'); user = null; render(); });
+  document.querySelector('#logout').addEventListener('click', async () => {
+    try {
+      if (authMode === 'legacy') {
+        await api('logout');
+        user = null;
+        render();
+      } else {
+        await signOut(auth);
+      }
+    } catch (error) {
+      alert(authErrorMessage(error));
+    }
+  });
   document.querySelectorAll('[data-game]').forEach(button => button.addEventListener('click', () => openGame(button.dataset.game)));
   bindThemeToggle();
 }
@@ -341,8 +488,42 @@ function gameCard(game, played) { const result = played.filter(item => item.id =
 function openGame(id) { currentGame = games.find(game => game.id === id); gameState = { index: 0, score: 0, hintsUsed: 0, answered: false, hint: false, level: 'Facil', results: [], questionSets: prepareQuestionSets(currentGame) }; renderGameModal(); }
 function renderGameModal() { const questions = currentQuestions(); const question = questions[gameState.index]; const levelLabels = { Facil: 'Fácil', Medio: 'Médio', Dificil: 'Difícil' }; document.querySelector('#game-modal')?.remove(); app.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="game-modal"><section class="game-modal"><div class="modal-top"><div><div class="eyebrow">Desafio ${gameState.index + 1} de ${questions.length}</div><h2>${currentGame.title}</h2></div><button class="close-btn" id="close-game" aria-label="Fechar">×</button></div><p class="intro">Resolva a questão para liberar a próxima etapa.</p><div class="level-tabs">${['Facil', 'Medio', 'Dificil'].map(level => `<button class="${gameState.level === level ? 'active' : ''}" data-level="${level}">${levelLabels[level]}</button>`).join('')}</div><div class="question-box"><p class="question">${question.q}</p><p class="question-motivation">Escolha uma resposta para conferir seu raciocínio.</p><div class="answer-grid">${question.options.map(option => `<button class="answer-btn" data-answer="${option}">${option}</button>`).join('')}</div></div><div class="hint" id="hint">${gameState.hint ? `Dica: ${question.hint} Desconto aplicado: ${HINT_COST} pontos.` : `<strong>Atenção: cada dica desconta ${HINT_COST} pontos da partida.</strong> O desconto vale mesmo se errar a resposta.`}</div><div class="modal-footer"><span class="game-meta">${pointsAfterHints()} pontos nesta partida</span><button class="ghost-btn" id="hint-btn" ${gameState.hint ? 'disabled' : ''}>${gameState.hint ? `Dica usada (-${HINT_COST} pts)` : `Pedir dica (-${HINT_COST} pts)`}</button></div></section></div>`); document.querySelector('#close-game').addEventListener('click', closeGame); document.querySelector('#hint-btn').addEventListener('click', () => { if (gameState.hint) return; gameState.hint = true; gameState.hintsUsed++; renderGameModal(); }); document.querySelectorAll('[data-level]').forEach(button => button.addEventListener('click', () => { gameState.level = button.dataset.level; gameState.index = 0; gameState.answered = false; gameState.hint = false; renderGameModal(); })); document.querySelectorAll('[data-answer]').forEach(button => button.addEventListener('click', () => answer(button, question))); }
 function answer(button, question) { if (gameState.answered) return; gameState.answered = true; const questions = currentQuestions(); const correct = button.dataset.answer === question.answer; const basePoints = gameState.level === 'Dificil' ? 150 : gameState.level === 'Medio' ? 125 : 100; const previousScore = pointsAfterHints(); gameState.results.push({ question: question.q, answer: button.dataset.answer, correctAnswer: question.answer, correct }); button.classList.add(correct ? 'correct' : 'wrong'); document.querySelectorAll('[data-answer]').forEach(option => { if (option.dataset.answer === question.answer) option.classList.add('correct'); }); if (correct) gameState.score += basePoints; const pointsEarned = pointsAfterHints() - previousScore; const motivationElement = document.querySelector('.question-motivation'); motivationElement.textContent = motivation(correct); motivationElement.classList.add(correct ? 'is-correct' : 'is-wrong'); const feedback = correct ? `Muito bem! +${pointsEarned} pontos líquidos.` : 'Quase! A resposta correta está destacada.'; const footer = document.querySelector('.modal-footer'); footer.innerHTML = `<span class="game-meta">${feedback}</span><button class="primary-btn" id="next-question">${gameState.index === questions.length - 1 ? 'Ver resultado' : 'Continuar'} →</button>`; document.querySelector('#next-question').addEventListener('click', () => { if (gameState.index === questions.length - 1) finishGame(); else { gameState.index++; gameState.answered = false; gameState.hint = false; renderGameModal(); } }); }
-async function finishGame() { const correctCount = gameState.results.filter(result => result.correct).length; const accuracy = Math.round((correctCount / gameState.results.length) * 100); const finalScore = pointsAfterHints(); user.totalScore = (user.totalScore || 0) + finalScore; user.played = [...(user.played || []), { id: currentGame.id, title: currentGame.title, score: finalScore, accuracy, date: new Date().toLocaleDateString('pt-BR') }]; user.badges = [...new Set([...user.badges || [], ...unlockedMedals(user)])]; try { await saveUser(); renderResults(correctCount, accuracy, finalScore); } catch (requestError) { alert(requestError.message); } }
+async function finishGame() { const correctCount = gameState.results.filter(result => result.correct).length; const accuracy = Math.round((correctCount / gameState.results.length) * 100); const finalScore = pointsAfterHints(); const previousUser = user; user = { ...user, totalScore: (user.totalScore || 0) + finalScore, played: [...(user.played || []), { id: currentGame.id, title: currentGame.title, score: finalScore, accuracy, date: new Date().toLocaleDateString('pt-BR') }] }; user.badges = [...new Set([...user.badges || [], ...unlockedMedals(user)])]; try { await saveUser(); renderResults(correctCount, accuracy, finalScore); } catch (requestError) { user = previousUser; alert(authErrorMessage(requestError)); } }
 function renderResults(correctCount, accuracy, finalScore) { const rows = gameState.results.map((result, index) => `<div class="result-row"><span class="result-status ${result.correct ? 'is-correct' : 'is-wrong'}">${result.correct ? '✓' : '×'}</span><div><strong>${index + 1}. ${result.question}</strong><small>Sua resposta: ${result.answer}${result.correct ? '' : ` · Correta: ${result.correctAnswer}`}</small></div></div>`).join(''); const resultMessage = accuracy === 100 ? 'Excelente! Você resolveu tudo com muita atenção.' : accuracy >= 60 ? 'Muito bom! Continue praticando para ficar ainda melhor.' : 'Cada tentativa ensina algo novo. Continue praticando e use uma dica quando precisar.'; document.querySelector('#game-modal')?.remove(); app.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="game-modal"><section class="game-modal results-modal"><div class="modal-top"><div><div class="eyebrow">Resultado da partida</div><h2>${currentGame.title}</h2></div><button class="close-btn" id="close-game" aria-label="Fechar">×</button></div><div class="result-summary"><strong>${correctCount}/${gameState.results.length}</strong><span>${accuracy}% de acerto · ${finalScore} pontos após dicas</span></div><p class="motivation-message">${resultMessage}</p><div class="results-list">${rows}</div><button class="primary-btn result-done" id="result-done">Voltar para a trilha</button></section></div>`); document.querySelector('#close-game').addEventListener('click', () => { closeGame(); renderDashboard(); }); document.querySelector('#result-done').addEventListener('click', () => { closeGame(); renderDashboard(); }); }
 function closeGame() { document.querySelector('#game-modal')?.remove(); }
 applyTheme(localStorage.getItem(themeKey) || 'light');
-api('me').then(data => { user = data.user; render(); }).catch(() => render());
+onAuthStateChanged(auth, async firebaseUser => {
+  if (!firebaseUser) {
+    if (authStateInitialized) {
+      user = null;
+      render();
+      return;
+    }
+    authStateInitialized = true;
+    try {
+      const data = await api('me');
+      if (data.user) {
+        authMode = 'legacy';
+        user = data.user;
+      }
+    } catch (error) {
+      console.warn('Sessão alternativa indisponível; o login Firebase continua disponível.', error);
+    }
+    render();
+    return;
+  }
+  authStateInitialized = true;
+  authMode = 'firebase';
+  try {
+    user = await getOrCreateUserProfile(firebaseUser);
+    render();
+  } catch (error) {
+    console.error('Não foi possível carregar o perfil do Firebase.', error);
+    app.innerHTML = '<section class="auth-view"><div class="auth-panel"><div class="auth-card"><h2>Não foi possível carregar seu perfil</h2><p id="firebase-error"></p><button class="primary-btn" id="reload-app">Tentar novamente</button><button class="text-btn" id="firebase-logout">Sair</button></div></div></section>';
+    document.querySelector('#firebase-error').textContent = authErrorMessage(error);
+    document.querySelector('#reload-app').addEventListener('click', () => location.reload());
+    document.querySelector('#firebase-logout').addEventListener('click', () => signOut(auth).catch(signOutError => {
+      console.error('Não foi possível encerrar a sessão do Firebase.', signOutError);
+    }));
+  }
+});

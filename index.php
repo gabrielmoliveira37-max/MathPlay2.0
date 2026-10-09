@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 <body>
   <div id="app" class="app-shell"></div>
-  <script src="app.js?v=8"></script>
+  <script type="module" src="app.js?v=11"></script>
   <script>
     window.mathplayGoogleClientId = <?= json_encode((string) getenv('MATHPLAY_GOOGLE_CLIENT_ID')) ?>;
     window.addEventListener('load', () => {
